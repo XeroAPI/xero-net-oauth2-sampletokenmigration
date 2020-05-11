@@ -15,6 +15,7 @@ It assumes you've already created OAuth2 credentials for your app at https://dev
   - *Scope* - this is the list of scope values that your app will request. It must include the `offline_access` scope.
   - *SigningCertPath* - this is the path to the signing certificate your app uses in the OAuth1.0a process
   - *SigningCertPassword* - if your signing certificate has a password, enter it here; otherwise, leave it empty
+  - *TenantType* - this should be ORGANISATION or PRACTICE depending on the tenant type being migrated
 
 - Build the solution
 
