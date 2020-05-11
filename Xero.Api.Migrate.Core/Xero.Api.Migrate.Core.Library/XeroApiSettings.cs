@@ -28,5 +28,7 @@ namespace Xero.Api.Migrate.Core.Library
         public string SigningCertificatePath => ApiSettings["SigningCertPath"];
 
         public string SigningCertificatePassword => ApiSettings["SigningCertPassword"];
+
+        public string TenantType => !string.IsNullOrWhiteSpace(ApiSettings["TenantType"]) ? ApiSettings["TenantType"] : "ORGANISATION";
     }
 }

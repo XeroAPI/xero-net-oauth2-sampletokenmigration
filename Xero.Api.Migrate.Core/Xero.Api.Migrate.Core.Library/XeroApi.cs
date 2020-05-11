@@ -14,6 +14,7 @@ namespace Xero.Api.Migrate.Core.Library
         private const string AuthScheme = "Bearer";
         private const string XeroTenantIdHeader = "Xero-Tenant-Id";
         private const string OrganisationPath = "/api.xro/2.0/organisation";
+        private const string ClientsPath = "/xero.hq/1.0/clients";
         private const string ConnectionsPath = "/connections";
 
         private readonly string _accessToken;
@@ -46,7 +47,7 @@ namespace Xero.Api.Migrate.Core.Library
 
             var connections = JsonConvert.DeserializeObject<List<ConnectionResponse>>(responseBody);
 
-            return connections.Select(c => c.TenantId.ToString());
+            return connections.Select(c => $"{c.TenantType}|{c.TenantId}");
         }
 
         public async Task<Organisation> GetOrganisation(string organisationId)
@@ -66,9 +67,31 @@ namespace Xero.Api.Migrate.Core.Library
                 throw new Exception($"Organisation retrieval failed for access token '{_accessToken}' and organisation id '{organisationId}' with status code {response.StatusCode} - {responseBody}");
             }
 
-            var apiResponse = JsonConvert.DeserializeObject<ApiResponse>(responseBody);
+            var apiResponse = JsonConvert.DeserializeObject<OrganisationsResponse>(responseBody);
 
             return apiResponse.Organisations.FirstOrDefault();
+        }
+
+        public async Task<int> GetClientCount(string practiceId)
+        {
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, ClientsPath);
+
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue(AuthScheme, _accessToken);
+
+            requestMessage.Headers.Add(XeroTenantIdHeader, practiceId);
+
+            var response = await _httpClient.SendAsync(requestMessage);
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"Practice client retrieval failed for access token '{_accessToken}' and practice id '{practiceId}' with status code {response.StatusCode} - {responseBody}");
+            }
+
+            var apiResponse = JsonConvert.DeserializeObject<ClientsResponse>(responseBody);
+
+            return apiResponse.Pagination.Total;
         }
     }
 }

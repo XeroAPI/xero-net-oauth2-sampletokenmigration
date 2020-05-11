@@ -10,52 +10,81 @@ namespace Xero.Api.Migrate.Core
         {
             var apiSettings = new XeroApiSettings();
 
+            if (apiSettings.TenantType != "ORGANISATION" && apiSettings.TenantType != "PRACTICE")
+            {
+                Console.WriteLine("We don't recognise your TenantType. TenantType must be defined in 'appsettings.json' as either 'ORGANISATION' or 'PRACTICE'");
+                Console.ReadLine();
+            }
+            else
+            {
+                await MigrateAccessToken(args, apiSettings);
+            }
+        }
+
+        private static async Task MigrateAccessToken(string[] args, XeroApiSettings apiSettings)
+        {
             var tokenMigrator = new TokenMigrator(apiSettings);
-            
+
             try
             {
-                var oauth2TokenResponse = await tokenMigrator.Migrate(args[0]);
+                var oauth2TokenResponse = await tokenMigrator.Migrate(args[0], apiSettings.TenantType);
 
                 Console.WriteLine();
                 Console.WriteLine($"Access token: {oauth2TokenResponse.AccessToken}");
                 Console.WriteLine();
                 Console.WriteLine($"Refresh token: {oauth2TokenResponse.RefreshToken}");
                 Console.WriteLine();
-                Console.WriteLine($"Organisation Id: {oauth2TokenResponse.XeroTenantId}");
+                Console.WriteLine($"Tenant Id: {oauth2TokenResponse.XeroTenantId}");
                 Console.WriteLine();
                 Console.WriteLine($"Expires in: {oauth2TokenResponse.ExpiresIn} seconds");
                 Console.WriteLine();
 
-                Console.WriteLine("Press any key to get the organisations for which these tokens apply...");
+                Console.WriteLine("Press any key to get the tenants for which these tokens apply...");
                 Console.ReadLine();
 
                 var xeroApi = new XeroApi(apiSettings, oauth2TokenResponse.AccessToken);
 
-                Console.WriteLine("These tokens apply to connections for the following organisations. You should replace any persisted tokens for these organisations with the tokens displayed above.");
+                Console.WriteLine("These tokens apply to connections for the following tenants. You should replace any persisted tokens for these tenants with the tokens displayed above.");
                 Console.WriteLine();
 
-                var organisationConnections = await xeroApi.GetConnections();
-                foreach (var organisationConnection in organisationConnections)
+                var connections = await xeroApi.GetConnections();
+                foreach (var connection in connections)
                 {
-                    Console.WriteLine(organisationConnection);
+                    Console.WriteLine(connection);
                 }
+
                 Console.WriteLine();
 
-                Console.WriteLine("Press any key to use your new access token to retrieve the organisation from the Xero API...");
+                Console.WriteLine("Press any key to use your new access token to make a request to the Xero API for the migrated access token...");
                 Console.ReadLine();
 
-                var organisation = await xeroApi.GetOrganisation(oauth2TokenResponse.XeroTenantId);
+                if (apiSettings.TenantType == "ORGANISATION")
+                {
+                    var organisation = await xeroApi.GetOrganisation(oauth2TokenResponse.XeroTenantId);
 
-                Console.WriteLine("Organisation retrieved successfully:");
-                Console.WriteLine();
-                Console.WriteLine($"Name: '{organisation.Name}'");
-                Console.WriteLine($"Status: {organisation.OrganisationStatus}");
-                Console.WriteLine($"Country Code: {organisation.CountryCode}");
-                Console.WriteLine($"Is Demo Company? {organisation.IsDemoCompany}");
-                Console.WriteLine();
+                    Console.WriteLine("Organisation retrieved successfully:");
+                    Console.WriteLine();
+                    Console.WriteLine($"Name: '{organisation.Name}'");
+                    Console.WriteLine($"Status: {organisation.OrganisationStatus}");
+                    Console.WriteLine($"Country Code: {organisation.CountryCode}");
+                    Console.WriteLine($"Is Demo Company? {organisation.IsDemoCompany}");
+                    Console.WriteLine();
 
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadLine();
+                    Console.WriteLine("Press any key to exit...");
+                    Console.ReadLine();
+                }
+                else
+                {
+                    var clientCount = await xeroApi.GetClientCount(oauth2TokenResponse.XeroTenantId);
+
+                    Console.WriteLine("Clients retrieved successfully:");
+                    Console.WriteLine();
+                    Console.WriteLine($"Total count: '{clientCount}'");
+                    Console.WriteLine();
+
+                    Console.WriteLine("Press any key to exit...");
+                    Console.ReadLine();
+                }
             }
             catch (Exception e)
             {

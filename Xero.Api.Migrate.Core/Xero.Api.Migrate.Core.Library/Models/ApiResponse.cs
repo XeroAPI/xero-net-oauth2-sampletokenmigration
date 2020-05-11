@@ -2,7 +2,7 @@
 
 namespace Xero.Api.Migrate.Core.Library.Models
 {
-    public class ApiResponse
+    public class OrganisationsResponse
     {
         public List<Organisation> Organisations { get; set; }
     }

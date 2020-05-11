@@ -33,7 +33,7 @@ namespace Xero.Api.Migrate.Core.Library
             };
         }
 
-        public async Task<OAuth2TokenResponse> Migrate(string accessToken)
+        public async Task<OAuth2TokenResponse> Migrate(string accessToken, string tenantType)
         {
             var requestBody = new OAuth2TokenRequest
             {
@@ -44,12 +44,12 @@ namespace Xero.Api.Migrate.Core.Library
 
             var content = new StringContent(JsonConvert.SerializeObject(requestBody), Encoding.UTF8, MediaType);
 
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, MigratePath)
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{MigratePath}?tenantType={tenantType}")
             {
                 Content = content
             };
 
-            var authorizationHeaderValue = BuildOAuth1AuthorizationHeader(accessToken);
+            var authorizationHeaderValue = BuildOAuth1AuthorizationHeader(accessToken, tenantType);
 
             requestMessage.Headers.Authorization = new AuthenticationHeaderValue(AuthScheme, authorizationHeaderValue);
 
@@ -65,13 +65,13 @@ namespace Xero.Api.Migrate.Core.Library
             return JsonConvert.DeserializeObject<OAuth2TokenResponse>(responseBody);
         }
 
-        private string BuildOAuth1AuthorizationHeader(string accessToken)
+        private string BuildOAuth1AuthorizationHeader(string accessToken, string tenantType)
         {
             var nonce = Guid.NewGuid().ToString();
 
             var currentTimestamp = CurrentTimestamp();
 
-            var baseSignatureString = GenerateBaseSignatureString(accessToken, nonce, currentTimestamp);
+            var baseSignatureString = GenerateBaseSignatureString(accessToken, tenantType, nonce, currentTimestamp);
 
             var signatureString = Sign(baseSignatureString);
 
@@ -87,7 +87,7 @@ namespace Xero.Api.Migrate.Core.Library
             return secondsSinceEpoch.ToString();
         }
 
-        private string GenerateBaseSignatureString(string accessToken, string nonce, string currentTimestamp)
+        private string GenerateBaseSignatureString(string accessToken, string tenantType, string nonce, string currentTimestamp)
         {
             const string httpMethod = "POST";
             
@@ -100,7 +100,8 @@ namespace Xero.Api.Migrate.Core.Library
             oauthParameterStringBuilder.Append("oauth_signature_method=RSA-SHA1&");
             oauthParameterStringBuilder.Append($"oauth_timestamp={currentTimestamp}&");
             oauthParameterStringBuilder.Append($"oauth_token={accessToken}&");
-            oauthParameterStringBuilder.Append("oauth_version=1.0");
+            oauthParameterStringBuilder.Append("oauth_version=1.0&");
+            oauthParameterStringBuilder.Append($"tenantType={tenantType}");
 
             var oauthParameterString = oauthParameterStringBuilder.ToString().Escape();
 
